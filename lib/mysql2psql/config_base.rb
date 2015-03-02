@@ -1,5 +1,6 @@
 require 'yaml'
 require 'mysql2psql/errors'
+require 'erb'
 
 class Mysql2psql
   class ConfigBase
@@ -7,6 +8,24 @@ class Mysql2psql
 
     def initialize(yaml)
       @config = yaml
+
+      # Process any ERB in the config.
+      nested_each(@config)
+    end
+
+    def nested_each(hash)
+      hash.each_pair do |k,v|
+        if v.is_a?(Hash)
+          nested_each(v)
+        else
+          has_erb = v.is_a?(String) ? v.include?('<%=') : false
+          if has_erb
+            renderer = ERB.new(v)
+            output = renderer.result()
+            hash[k] = output
+          end
+        end
+      end
     end
 
     def [](key)
